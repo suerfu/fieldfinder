@@ -2,15 +2,32 @@
 #include "FieldFinder.h"
 #include "FieldInterpolator.h"
 
+#include "TApplication.h"
+
 #include <iostream>
 
 using namespace std;
 
+
+vector<ElectricField> fields;
+
+double interpolate( double *x, double *p) {
+    double f = 0;
+    for( unsigned int i=0; i<fields.size(); i++){
+        f += p[i] * fields[i](x);
+    }
+    return f;
+}
+
+
+
+
 int main(){
+
+    TApplication* app = new TApplication("app",0,0);
 
     cout << "Initializing field templates...\n";
 
-    vector<ElectricField> fields;
     fields.push_back( ElectricField(0,0) );
     fields.push_back( ElectricField(1,0) );
     fields.push_back( ElectricField(0,1) );
@@ -21,9 +38,6 @@ int main(){
     fields.push_back( ElectricField(-1,1) );
     fields.push_back( ElectricField(1,-1) );
 
-    cout << "Creating field interpolator...\n";
-    FieldInterpolator fieldinterpolator( fields );
-
     cout << "Initializing weights...\n";
     vector<double> p;
     for( int i=0; i<9; i++){
@@ -31,8 +45,17 @@ int main(){
     }
 
     cout << "Running FieldFinder...\n";
-    FieldFinder fieldfinder( "Gauss2D.root", "hist2d");
-    fieldfinder.FindField( &fieldinterpolator, p);
+    //FieldFinder fieldfinder( "Gauss2D.root", "hist2d");
+    //fieldfinder.FindField( &fieldinterpolator, p);
+    TFile file( "Gauss2D.root" );
+    TH2F* prob = (TH2F*) file.Get( "hist2d" );
+    
+    TF2* field = new TF2("field", interpolate, -10, 10, -10, 10, fields.size() );
+    field->SetParameters( &p[0]);
+    prob->Fit("field");
+
+    field->Draw("surf5 same");
+    app->Run();
 
     return 0;
 }

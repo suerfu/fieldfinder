@@ -28,7 +28,10 @@ class FieldInterpolator{
 
 public:
 
-    FieldInterpolator( vector<ElectricField> f ){ fields = f;}
+    FieldInterpolator( ){ fields.clear();}
+        //!< Default constructor.
+
+    FieldInterpolator( vector<ElectricField> f ){ LoadFields(f);}
         //!< Constructor.
         //!< In the implementation ElectricField should be changed to actual field object.
 
@@ -37,6 +40,8 @@ public:
 
     unsigned int GetDOF(){ return fields.size();}
         //!< Returns the number of field templates to be used.
+
+    void LoadFields( vector<ElectricField> f){ fields = f;}
 
     //unsigned int GetDimension(){ return 2;}
         //!< Dimension of the field. 2D for now.
