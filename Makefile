@@ -9,9 +9,9 @@ CFLAGS = -Wall -std=c++0x -I./include $(root-config --cflags)
 ROOT_LD_FLAGS = $(root-config --libs)
 
 
-all : gauss2d
+all : GaussND
 
-gauss2d : test/Gauss2D.cpp $(OBJ_FILES)
+GaussND : test/Gauss2D.cpp $(OBJ_FILES)
 	@echo "compiling $@ using $^"
 	@$(CC) $(CFLAGS) $^ -o $@ `root-config --libs`
 
@@ -23,6 +23,6 @@ gauss2d : test/Gauss2D.cpp $(OBJ_FILES)
 
 clean:
 	@echo "cleaning..."
-	@-rm gauss2d > /dev/null 2>&1
+	@-rm GaussND > /dev/null 2>&1
 	@-rm ${OBJ_FILES} > /dev/null 2>&1
 

@@ -3,109 +3,116 @@
 
 #include <iostream>
 #include <vector>
-#include <cmath>
 
-#include "Math/Minimizer.h"
-#include "Math/Factory.h"
-#include "Math/Functor.h"
-//#include "TError.h"
-#include <iostream>
+#include "FieldTemplate.h"
+
+#include "TFile.h"
+#include "TH2F.h"
+
+#include <string>
 
 using namespace std;
 
-//! Abstract class for electric field templates. 
-class ElectricField{
-
-public:
-    
-    //! Constructor. Currently it's using a 2D Gaussian as a placeholder.
-    ElectricField( double a ): center(a){}
-
-    ~ElectricField(){}
-
-    double operator()(){ return center;}
-        // For test purpose evaluate a 2D Gaussian.
-
-private:
-    
-    double center;
-};
 
 class FieldInterpolator{
 
 public:
 
-    FieldInterpolator( ){}
+    FieldInterpolator( );
         //!< Default constructor.
 
-    ~FieldInterpolator(){}
+    ~FieldInterpolator();
         //!< Destructor.
     
-    void LoadField( ElectricField f){ fields.push_back(f);}
+    void LoadField( FieldTemplate f);
         //!< Add electric field templates.
+        //!< This method is used for demo.
+
+    void LoadField(/*Actual field object goes here*/);
+        //!< Method to load field template.
+
+    int LoadKrData( string filename, string histname);
+        //!< This method is used to load the actual calibration data.
+        //!< Let's assume it's a root file and the data is accessible as a TH2F object.
+        //!< Returns 0 upon success. Negative number upon failure. This can also be handled with exceptions.
 
     unsigned int GetDOF(){ return fields.size();}
         //!< Returns the number of field templates to be used.
 
-    //! Evaluate the interpolated field at location X.
-    //! The number of elements pointed to by x should be the same as the number of field templates.
-    //! It is a wrapper for ComputeLikelihood. This wrapper is required for ROOT's minimizer template.
-    double operator()( double* x ){
+
+    //! Most crucial operator for the minimizer routine. This wrapper is required for ROOT's minimizer template.
+    //! It is a wrapper for ComputeLikelihood. 
+    //! In the current mock-up example, number of x should be equal to number of templates.
+    double operator()( const double* x ){
         return ComputeLikelihood( x );
     }
 
+
     //! Compute the likelihood between observed Kr83 events and the linear combination of electric fields for the given sets of parameters.
     //! For now this is a mock-up function that returns ND Gaussian whose center is the respective center of each fields.
-    double ComputeLikelihood( double* x){
-        
-        double exponent = 0;
-        for( unsigned int i=0; i<fields.size(); i++){
-            exponent += -0.5*( x[i]-fields[i]() ) * ( x[i]-fields[i]() );
-        }
-        return exp(exponent);
-    }
+    double ComputeLikelihood( const double* x);
 
-    //! Actual function that does the minimization.
-    void Minimize( const char* minName = "Minuit", const char* algoName = "Simplex"){
-        
-        // Initialize ROOT minimizer object
-        ROOT::Math::Minimizer* minimizer = ROOT::Math::Factory::CreateMinimizer(minName, algoName);
-        // Set a number of required parameters
-        minimizer->SetMaxIterations( maxIteration );
-        minimizer->SetTolerance( tolerance )
-        minimizer->SetPrintLevel( printLevel );
 
-        // Create a callable function pointer
-        // Argument is C++ object and dimension/dof.
-        ROOT::Math::Functor f( *this, fields.size() );
+    //! Actual minimization routine.
+    //! It takes as argument the Minimization library (default Minuit) and algorithm.
+    //! Possible choices are:
+    //!   minName             algoName
+    //! Minuit /Minuit2    Migrad,Simplex,Combined,Scan(default is Migrad if not specified.)
+    //! Minuit2            Fumili2
+    //! Fumili
+    //! GSLMultiMin        ConjugateFR, ConjugatePR, BFGS, BFGS2, SteepestDescent
+    //! GSLMultiFit
+    //! GSLSimAn
+    //! Genetic
+    void Minimize( string minName = "Minuit", string algoName = "Simplex");
 
-        // Set function to minimize.
-        minimizer->SetFunction( f );
 
-        // Initialize variables and their step sizes.
-        for( unsigned int i=0; i<fields.size(); i++ ){
-            stringstream varName;
-            varName << "x" << i;
-            minimizer->SetVariable( i, varName.str().c_str(), variables[i], steps[i]);
-        }
+    //! Initialize variables.
+    void SetVariables( vector<double> v){ variables = v; }
 
-        // Do the actual minimization.
-        minimizer->Minimize();
+    //! Get the current variable.
+    //! After minimization, this method can be called to check the coordinate of minimum.
+    vector<double> GetVariables(){ return variables; }
 
-        cout << "Minimum: f( ";
-        const double *xmin = minimizer->X();
-        for( unsigned int i=0; i<fields.size(); i++){
-            cout << xmin[i] << " ";
-        }
-        cout << ") : " << minimizer->MinValue() << endl;
-    }
+
+    //! Set the current stepsize.
+    void SetStepSizes( vector<double> v){ steps = v; }
+
+    //! Get the current stepsize.
+    vector<double> GetStepSizes(){ return steps; }
+
+
+    //! Set the maximum number of iterations.
+    //! For certain algorithms this will be the max number of function calls (i.e. Simplex).
+    void SetMaxIterations( unsigned int m = 1000000 ){ maxIteration = m; }
+
+    //! Get the maximum number of iterations.
+    unsigned int GetMaxIterations(){ return maxIteration; }
+
+    
+    //! Set the required tolerance.
+    void SetTolerance( float a = 0.001 ){ tolerance = a; }
+
+    //! Get the current tolerance.
+    float GetTolerance(){ return tolerance;}
+
+
+    //! Set the verbosity level.
+    void SetPrintLevel( int a = 0 ){ printLevel = 0; }
+
+    //! Get the verbosity level.
+    int GetPrintLevel(){ return printLevel; }
+
 
 private:
 
-    vector<ElectricField> fields;
+    vector<FieldTemplate> fields;
         //!< Vector object to hold electric field templates.
+        //!< This should be replaced with actual field objects.
 
     vector<double> variables;
+
+    double minValue;
 
     vector<double> steps;
 
@@ -114,6 +121,8 @@ private:
     float tolerance;
 
     int printLevel;
+
+    TH2F* krData;
 };
 
 
